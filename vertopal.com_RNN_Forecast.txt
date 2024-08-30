@@ -1,0 +1,386 @@
+
+
+    import numpy as np
+    import pandas as pd
+    import matplotlib.pyplot as plt
+    from sklearn.preprocessing import MinMaxScaler
+    from sklearn.metrics import mean_squared_error
+    from tensorflow.keras.models import Sequential
+    from tensorflow.keras.layers import Dense, SimpleRNN
+    from sklearn.model_selection import train_test_split
+    from statsmodels.tsa.arima.model import ARIMA
+    import yfinance as yf
+
+
+    stock_data = yf.download('AAPl', start='2012-01-01', end='2022-01-01')
+    df=stock_data[['Close']]
+
+    [*********************100%%**********************]  1 of 1 completed
+
+    df['Close']=df['Close'].rolling(window=5).mean()
+    df.dropna(inplace=True)
+
+    <ipython-input-32-693f30088951>:1: SettingWithCopyWarning: 
+    A value is trying to be set on a copy of a slice from a DataFrame.
+    Try using .loc[row_indexer,col_indexer] = value instead
+
+    See the caveats in the documentation: https://pandas.pydata.org/pandas-docs/stable/user_guide/indexing.html#returning-a-view-versus-a-copy
+      df['Close']=df['Close'].rolling(window=5).mean()
+    <ipython-input-32-693f30088951>:2: SettingWithCopyWarning: 
+    A value is trying to be set on a copy of a slice from a DataFrame
+
+    See the caveats in the documentation: https://pandas.pydata.org/pandas-docs/stable/user_guide/indexing.html#returning-a-view-versus-a-copy
+      df.dropna(inplace=True)
+
+    scaler = MinMaxScaler(feature_range=(0, 1))
+    scaled_data = scaler.fit_transform(df)
+
+    def create_dataset(data, time_step=1):
+        X, Y = [], []
+        for i in range(len(data)-time_step-1):
+            X.append(data[i:(i+time_step), 0])
+            Y.append(data[i + time_step, 0])
+        return np.array(X), np.array(Y)
+
+    time_step = 60
+    X, Y = create_dataset(scaled_data, time_step)
+
+    X_train, X_test, Y_train, Y_test = train_test_split(X, Y, test_size=0.2, random_state=42)
+
+    X_train = X_train.reshape(X_train.shape[0], X_train.shape[1], 1)
+    X_test = X_test.reshape(X_test.shape[0], X_test.shape[1], 1)
+
+    model = Sequential()
+    model.add(SimpleRNN(50, return_sequences=True, input_shape=(time_step, 1)))
+    model.add(SimpleRNN(50, return_sequences=False))
+    model.add(Dense(25))
+    model.add(Dense(1))
+    model.compile(optimizer='adam', loss='mean_squared_error')
+
+    /usr/local/lib/python3.10/dist-packages/keras/src/layers/rnn/rnn.py:204: UserWarning: Do not pass an `input_shape`/`input_dim` argument to a layer. When using Sequential models, prefer using an `Input(shape)` object as the first layer in the model instead.
+      super().__init__(**kwargs)
+
+    model.fit(X_train, Y_train, epochs=100, batch_size=32, validation_data=(X_test, Y_test), verbose=1)
+
+    Epoch 1/100
+    62/62 ━━━━━━━━━━━━━━━━━━━━ 7s 40ms/step - loss: 0.0209 - val_loss: 4.1897e-04
+    Epoch 2/100
+    62/62 ━━━━━━━━━━━━━━━━━━━━ 2s 27ms/step - loss: 2.9794e-04 - val_loss: 1.8163e-04
+    Epoch 3/100
+    62/62 ━━━━━━━━━━━━━━━━━━━━ 3s 28ms/step - loss: 2.5190e-04 - val_loss: 1.9196e-04
+    Epoch 4/100
+    62/62 ━━━━━━━━━━━━━━━━━━━━ 3s 43ms/step - loss: 1.9494e-04 - val_loss: 1.0261e-04
+    Epoch 5/100
+    62/62 ━━━━━━━━━━━━━━━━━━━━ 3s 44ms/step - loss: 1.3138e-04 - val_loss: 1.1395e-04
+    Epoch 6/100
+    62/62 ━━━━━━━━━━━━━━━━━━━━ 2s 28ms/step - loss: 1.2529e-04 - val_loss: 1.4008e-04
+    Epoch 7/100
+    62/62 ━━━━━━━━━━━━━━━━━━━━ 2s 27ms/step - loss: 9.9078e-05 - val_loss: 8.0429e-05
+    Epoch 8/100
+    62/62 ━━━━━━━━━━━━━━━━━━━━ 2s 27ms/step - loss: 8.8500e-05 - val_loss: 7.2494e-05
+    Epoch 9/100
+    62/62 ━━━━━━━━━━━━━━━━━━━━ 3s 28ms/step - loss: 1.6222e-04 - val_loss: 1.9762e-04
+    Epoch 10/100
+    62/62 ━━━━━━━━━━━━━━━━━━━━ 4s 44ms/step - loss: 2.4136e-04 - val_loss: 9.9257e-05
+    Epoch 11/100
+    62/62 ━━━━━━━━━━━━━━━━━━━━ 3s 42ms/step - loss: 9.8176e-05 - val_loss: 1.1287e-04
+    Epoch 12/100
+    62/62 ━━━━━━━━━━━━━━━━━━━━ 4s 27ms/step - loss: 9.4059e-05 - val_loss: 7.0570e-05
+    Epoch 13/100
+    62/62 ━━━━━━━━━━━━━━━━━━━━ 3s 28ms/step - loss: 6.3376e-05 - val_loss: 6.2831e-05
+    Epoch 14/100
+    62/62 ━━━━━━━━━━━━━━━━━━━━ 2s 27ms/step - loss: 1.2977e-04 - val_loss: 1.4495e-04
+    Epoch 15/100
+    62/62 ━━━━━━━━━━━━━━━━━━━━ 4s 47ms/step - loss: 8.0915e-05 - val_loss: 8.9130e-05
+    Epoch 16/100
+    62/62 ━━━━━━━━━━━━━━━━━━━━ 2s 34ms/step - loss: 5.3050e-05 - val_loss: 5.1323e-05
+    Epoch 17/100
+    62/62 ━━━━━━━━━━━━━━━━━━━━ 2s 28ms/step - loss: 4.8567e-05 - val_loss: 9.4599e-05
+    Epoch 18/100
+    62/62 ━━━━━━━━━━━━━━━━━━━━ 2s 27ms/step - loss: 4.8629e-05 - val_loss: 1.0845e-04
+    Epoch 19/100
+    62/62 ━━━━━━━━━━━━━━━━━━━━ 2s 27ms/step - loss: 6.6338e-05 - val_loss: 2.9495e-05
+    Epoch 20/100
+    62/62 ━━━━━━━━━━━━━━━━━━━━ 3s 27ms/step - loss: 6.4950e-05 - val_loss: 1.3798e-04
+    Epoch 21/100
+    62/62 ━━━━━━━━━━━━━━━━━━━━ 2s 33ms/step - loss: 5.4971e-05 - val_loss: 5.6564e-05
+    Epoch 22/100
+    62/62 ━━━━━━━━━━━━━━━━━━━━ 3s 40ms/step - loss: 5.8425e-05 - val_loss: 2.0844e-05
+    Epoch 23/100
+    62/62 ━━━━━━━━━━━━━━━━━━━━ 2s 27ms/step - loss: 4.4333e-05 - val_loss: 7.2138e-05
+    Epoch 24/100
+    62/62 ━━━━━━━━━━━━━━━━━━━━ 3s 27ms/step - loss: 5.4243e-05 - val_loss: 2.3100e-05
+    Epoch 25/100
+    62/62 ━━━━━━━━━━━━━━━━━━━━ 3s 27ms/step - loss: 3.6479e-05 - val_loss: 2.3140e-05
+    Epoch 26/100
+    62/62 ━━━━━━━━━━━━━━━━━━━━ 2s 27ms/step - loss: 3.3007e-05 - val_loss: 2.7552e-05
+    Epoch 27/100
+    62/62 ━━━━━━━━━━━━━━━━━━━━ 4s 47ms/step - loss: 2.6727e-05 - val_loss: 3.3892e-05
+    Epoch 28/100
+    62/62 ━━━━━━━━━━━━━━━━━━━━ 2s 34ms/step - loss: 4.6114e-05 - val_loss: 1.6674e-04
+    Epoch 29/100
+    62/62 ━━━━━━━━━━━━━━━━━━━━ 2s 27ms/step - loss: 5.2233e-05 - val_loss: 2.9258e-05
+    Epoch 30/100
+    62/62 ━━━━━━━━━━━━━━━━━━━━ 3s 27ms/step - loss: 2.2595e-05 - val_loss: 9.3904e-05
+    Epoch 31/100
+    62/62 ━━━━━━━━━━━━━━━━━━━━ 2s 27ms/step - loss: 3.3292e-05 - val_loss: 4.0971e-05
+    Epoch 32/100
+    62/62 ━━━━━━━━━━━━━━━━━━━━ 3s 27ms/step - loss: 2.5386e-05 - val_loss: 3.6768e-05
+    Epoch 33/100
+    62/62 ━━━━━━━━━━━━━━━━━━━━ 3s 43ms/step - loss: 2.4484e-05 - val_loss: 1.3839e-04
+    Epoch 34/100
+    62/62 ━━━━━━━━━━━━━━━━━━━━ 4s 28ms/step - loss: 1.3845e-04 - val_loss: 2.4611e-05
+    Epoch 35/100
+    62/62 ━━━━━━━━━━━━━━━━━━━━ 3s 28ms/step - loss: 5.6663e-05 - val_loss: 1.9634e-05
+    Epoch 36/100
+    62/62 ━━━━━━━━━━━━━━━━━━━━ 2s 27ms/step - loss: 4.0954e-05 - val_loss: 4.6502e-05
+    Epoch 37/100
+    62/62 ━━━━━━━━━━━━━━━━━━━━ 2s 29ms/step - loss: 3.5749e-05 - val_loss: 7.8409e-05
+    Epoch 38/100
+    62/62 ━━━━━━━━━━━━━━━━━━━━ 3s 49ms/step - loss: 4.1155e-05 - val_loss: 2.7515e-05
+    Epoch 39/100
+    62/62 ━━━━━━━━━━━━━━━━━━━━ 4s 26ms/step - loss: 3.1479e-05 - val_loss: 2.8883e-05
+    Epoch 40/100
+    62/62 ━━━━━━━━━━━━━━━━━━━━ 2s 27ms/step - loss: 2.8248e-05 - val_loss: 2.8744e-05
+    Epoch 41/100
+    62/62 ━━━━━━━━━━━━━━━━━━━━ 3s 27ms/step - loss: 2.6273e-05 - val_loss: 1.5581e-05
+    Epoch 42/100
+    62/62 ━━━━━━━━━━━━━━━━━━━━ 2s 26ms/step - loss: 3.8801e-05 - val_loss: 1.0187e-04
+    Epoch 43/100
+    62/62 ━━━━━━━━━━━━━━━━━━━━ 3s 41ms/step - loss: 6.3709e-05 - val_loss: 1.7587e-05
+    Epoch 44/100
+    62/62 ━━━━━━━━━━━━━━━━━━━━ 3s 41ms/step - loss: 1.7702e-05 - val_loss: 4.7127e-05
+    Epoch 45/100
+    62/62 ━━━━━━━━━━━━━━━━━━━━ 2s 28ms/step - loss: 4.8697e-05 - val_loss: 4.3434e-05
+    Epoch 46/100
+    62/62 ━━━━━━━━━━━━━━━━━━━━ 3s 27ms/step - loss: 2.3956e-05 - val_loss: 1.4029e-04
+    Epoch 47/100
+    62/62 ━━━━━━━━━━━━━━━━━━━━ 2s 27ms/step - loss: 6.5867e-05 - val_loss: 2.1285e-05
+    Epoch 48/100
+    62/62 ━━━━━━━━━━━━━━━━━━━━ 2s 27ms/step - loss: 2.0882e-05 - val_loss: 1.4253e-05
+    Epoch 49/100
+    62/62 ━━━━━━━━━━━━━━━━━━━━ 2s 29ms/step - loss: 1.7944e-05 - val_loss: 4.3920e-05
+    Epoch 50/100
+    62/62 ━━━━━━━━━━━━━━━━━━━━ 3s 47ms/step - loss: 1.7998e-05 - val_loss: 2.8018e-05
+    Epoch 51/100
+    62/62 ━━━━━━━━━━━━━━━━━━━━ 2s 35ms/step - loss: 1.7245e-05 - val_loss: 3.2706e-05
+    Epoch 52/100
+    62/62 ━━━━━━━━━━━━━━━━━━━━ 2s 27ms/step - loss: 2.7765e-05 - val_loss: 1.9479e-05
+    Epoch 53/100
+    62/62 ━━━━━━━━━━━━━━━━━━━━ 3s 28ms/step - loss: 3.0480e-05 - val_loss: 2.7375e-05
+    Epoch 54/100
+    62/62 ━━━━━━━━━━━━━━━━━━━━ 2s 27ms/step - loss: 2.1532e-05 - val_loss: 2.2481e-05
+    Epoch 55/100
+    62/62 ━━━━━━━━━━━━━━━━━━━━ 3s 27ms/step - loss: 1.6528e-05 - val_loss: 1.1488e-04
+    Epoch 56/100
+    62/62 ━━━━━━━━━━━━━━━━━━━━ 3s 49ms/step - loss: 4.2735e-05 - val_loss: 5.7692e-05
+    Epoch 57/100
+    62/62 ━━━━━━━━━━━━━━━━━━━━ 4s 28ms/step - loss: 2.5547e-05 - val_loss: 1.6966e-05
+    Epoch 58/100
+    62/62 ━━━━━━━━━━━━━━━━━━━━ 2s 28ms/step - loss: 1.4118e-05 - val_loss: 9.6431e-06
+    Epoch 59/100
+    62/62 ━━━━━━━━━━━━━━━━━━━━ 2s 28ms/step - loss: 1.3610e-05 - val_loss: 3.9577e-05
+    Epoch 60/100
+    62/62 ━━━━━━━━━━━━━━━━━━━━ 3s 27ms/step - loss: 2.3339e-05 - val_loss: 4.1843e-05
+    Epoch 61/100
+    62/62 ━━━━━━━━━━━━━━━━━━━━ 4s 51ms/step - loss: 1.9783e-05 - val_loss: 3.3594e-05
+    Epoch 62/100
+    62/62 ━━━━━━━━━━━━━━━━━━━━ 2s 28ms/step - loss: 2.6221e-05 - val_loss: 2.4036e-05
+    Epoch 63/100
+    62/62 ━━━━━━━━━━━━━━━━━━━━ 2s 27ms/step - loss: 1.5731e-05 - val_loss: 1.6269e-05
+    Epoch 64/100
+    62/62 ━━━━━━━━━━━━━━━━━━━━ 2s 28ms/step - loss: 1.5399e-05 - val_loss: 1.3948e-05
+    Epoch 65/100
+    62/62 ━━━━━━━━━━━━━━━━━━━━ 2s 27ms/step - loss: 1.2723e-05 - val_loss: 1.4355e-04
+    Epoch 66/100
+    62/62 ━━━━━━━━━━━━━━━━━━━━ 2s 27ms/step - loss: 5.4975e-05 - val_loss: 1.1702e-05
+    Epoch 67/100
+    62/62 ━━━━━━━━━━━━━━━━━━━━ 2s 40ms/step - loss: 1.9235e-05 - val_loss: 2.5555e-05
+    Epoch 68/100
+    62/62 ━━━━━━━━━━━━━━━━━━━━ 3s 42ms/step - loss: 6.0830e-05 - val_loss: 8.3284e-06
+    Epoch 69/100
+    62/62 ━━━━━━━━━━━━━━━━━━━━ 4s 28ms/step - loss: 1.8095e-05 - val_loss: 2.8324e-05
+    Epoch 70/100
+    62/62 ━━━━━━━━━━━━━━━━━━━━ 2s 27ms/step - loss: 1.5641e-05 - val_loss: 2.0514e-05
+    Epoch 71/100
+    62/62 ━━━━━━━━━━━━━━━━━━━━ 2s 29ms/step - loss: 1.9554e-05 - val_loss: 1.2074e-05
+    Epoch 72/100
+    62/62 ━━━━━━━━━━━━━━━━━━━━ 2s 28ms/step - loss: 1.0792e-05 - val_loss: 2.5759e-05
+    Epoch 73/100
+    62/62 ━━━━━━━━━━━━━━━━━━━━ 4s 49ms/step - loss: 2.9835e-05 - val_loss: 7.6286e-05
+    Epoch 74/100
+    62/62 ━━━━━━━━━━━━━━━━━━━━ 2s 28ms/step - loss: 2.6003e-05 - val_loss: 3.4818e-05
+    Epoch 75/100
+    62/62 ━━━━━━━━━━━━━━━━━━━━ 3s 27ms/step - loss: 1.8215e-05 - val_loss: 1.3551e-05
+    Epoch 76/100
+    62/62 ━━━━━━━━━━━━━━━━━━━━ 3s 27ms/step - loss: 9.3377e-06 - val_loss: 1.1631e-05
+    Epoch 77/100
+    62/62 ━━━━━━━━━━━━━━━━━━━━ 2s 27ms/step - loss: 1.4525e-05 - val_loss: 1.0060e-04
+    Epoch 78/100
+    62/62 ━━━━━━━━━━━━━━━━━━━━ 2s 30ms/step - loss: 2.4833e-05 - val_loss: 3.2343e-05
+    Epoch 79/100
+    62/62 ━━━━━━━━━━━━━━━━━━━━ 3s 42ms/step - loss: 1.7675e-05 - val_loss: 9.5139e-06
+    Epoch 80/100
+    62/62 ━━━━━━━━━━━━━━━━━━━━ 4s 27ms/step - loss: 7.5925e-06 - val_loss: 6.3950e-06
+    Epoch 81/100
+    62/62 ━━━━━━━━━━━━━━━━━━━━ 2s 28ms/step - loss: 1.5288e-05 - val_loss: 2.1325e-05
+    Epoch 82/100
+    62/62 ━━━━━━━━━━━━━━━━━━━━ 3s 27ms/step - loss: 2.6518e-05 - val_loss: 1.9489e-05
+    Epoch 83/100
+    62/62 ━━━━━━━━━━━━━━━━━━━━ 2s 39ms/step - loss: 1.4283e-05 - val_loss: 1.9219e-05
+    Epoch 84/100
+    62/62 ━━━━━━━━━━━━━━━━━━━━ 3s 42ms/step - loss: 2.0400e-05 - val_loss: 9.8324e-06
+    Epoch 85/100
+    62/62 ━━━━━━━━━━━━━━━━━━━━ 4s 28ms/step - loss: 1.3193e-05 - val_loss: 1.2737e-05
+    Epoch 86/100
+    62/62 ━━━━━━━━━━━━━━━━━━━━ 2s 28ms/step - loss: 8.9523e-06 - val_loss: 7.3331e-06
+    Epoch 87/100
+    62/62 ━━━━━━━━━━━━━━━━━━━━ 2s 28ms/step - loss: 7.5645e-06 - val_loss: 1.1551e-05
+    Epoch 88/100
+    62/62 ━━━━━━━━━━━━━━━━━━━━ 2s 29ms/step - loss: 9.0181e-06 - val_loss: 9.2835e-06
+    Epoch 89/100
+    62/62 ━━━━━━━━━━━━━━━━━━━━ 4s 47ms/step - loss: 1.1851e-05 - val_loss: 4.8755e-05
+    Epoch 90/100
+    62/62 ━━━━━━━━━━━━━━━━━━━━ 2s 28ms/step - loss: 1.6187e-05 - val_loss: 1.1430e-05
+    Epoch 91/100
+    62/62 ━━━━━━━━━━━━━━━━━━━━ 3s 28ms/step - loss: 7.5645e-06 - val_loss: 1.0991e-05
+    Epoch 92/100
+    62/62 ━━━━━━━━━━━━━━━━━━━━ 2s 28ms/step - loss: 8.7411e-06 - val_loss: 1.1588e-05
+    Epoch 93/100
+    62/62 ━━━━━━━━━━━━━━━━━━━━ 2s 27ms/step - loss: 1.8688e-05 - val_loss: 1.6797e-05
+    Epoch 94/100
+    62/62 ━━━━━━━━━━━━━━━━━━━━ 3s 34ms/step - loss: 1.0705e-05 - val_loss: 2.0449e-05
+    Epoch 95/100
+    62/62 ━━━━━━━━━━━━━━━━━━━━ 3s 42ms/step - loss: 3.1376e-05 - val_loss: 1.1591e-05
+    Epoch 96/100
+    62/62 ━━━━━━━━━━━━━━━━━━━━ 4s 27ms/step - loss: 1.1192e-05 - val_loss: 1.5517e-05
+    Epoch 97/100
+    62/62 ━━━━━━━━━━━━━━━━━━━━ 2s 28ms/step - loss: 9.1406e-06 - val_loss: 9.2433e-06
+    Epoch 98/100
+    62/62 ━━━━━━━━━━━━━━━━━━━━ 2s 27ms/step - loss: 7.7755e-06 - val_loss: 1.2891e-05
+    Epoch 99/100
+    62/62 ━━━━━━━━━━━━━━━━━━━━ 4s 50ms/step - loss: 1.6930e-05 - val_loss: 5.7148e-06
+    Epoch 100/100
+    62/62 ━━━━━━━━━━━━━━━━━━━━ 4s 27ms/step - loss: 3.9728e-06 - val_loss: 1.1637e-05
+
+    <keras.src.callbacks.history.History at 0x79455b429390>
+
+    train_predict = model.predict(X_train)
+    test_predict = model.predict(X_test)
+
+    62/62 ━━━━━━━━━━━━━━━━━━━━ 1s 12ms/step
+    16/16 ━━━━━━━━━━━━━━━━━━━━ 0s 8ms/step
+
+    train_predict = scaler.inverse_transform(train_predict)
+    test_predict = scaler.inverse_transform(test_predict)
+    Y_train = scaler.inverse_transform([Y_train])
+    Y_test = scaler.inverse_transform([Y_test])
+
+    train_rmse = np.sqrt(mean_squared_error(Y_train[0], train_predict[:,0]))
+    test_rmse = np.sqrt(mean_squared_error(Y_test[0], test_predict[:,0]))
+
+    print(f'Train RMSE: {train_rmse}')
+    print(f'Test RMSE: {test_rmse}')
+
+    Train RMSE: 0.5425405420956345
+    Test RMSE: 0.5619779556537495
+
+    n_future = 30  # Predicting 30 days into the future
+    last_sequence = scaled_data[-time_step:]
+    predictions = []
+
+    for _ in range(n_future):
+        next_prediction = model.predict(last_sequence.reshape(1, time_step, 1))
+        predictions.append(next_prediction[0, 0])
+        last_sequence = np.append(last_sequence[1:], next_prediction, axis=0)
+    predictions = np.array(predictions)
+    future_predictions = scaler.inverse_transform(predictions.reshape(-1, 1))
+
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 25ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 22ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 23ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 29ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 22ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 22ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 24ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 29ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 29ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 23ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 24ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 23ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 23ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 23ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 24ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 29ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 23ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 22ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 24ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 34ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 23ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 23ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 24ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 22ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 23ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 22ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 24ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 23ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 28ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 22ms/step
+
+    model_arima = ARIMA(df, order=(5,1,0))
+    model_arima_fit = model_arima.fit()
+
+    /usr/local/lib/python3.10/dist-packages/statsmodels/tsa/base/tsa_model.py:473: ValueWarning: A date index has been provided, but it has no associated frequency information and so will be ignored when e.g. forecasting.
+      self._init_dates(dates, freq)
+    /usr/local/lib/python3.10/dist-packages/statsmodels/tsa/base/tsa_model.py:473: ValueWarning: A date index has been provided, but it has no associated frequency information and so will be ignored when e.g. forecasting.
+      self._init_dates(dates, freq)
+    /usr/local/lib/python3.10/dist-packages/statsmodels/tsa/base/tsa_model.py:473: ValueWarning: A date index has been provided, but it has no associated frequency information and so will be ignored when e.g. forecasting.
+      self._init_dates(dates, freq)
+
+    arima_pred = model_arima_fit.forecast(steps=len(X_test) + n_future)
+
+    /usr/local/lib/python3.10/dist-packages/statsmodels/tsa/base/tsa_model.py:836: ValueWarning: No supported index is available. Prediction results will be given with an integer index beginning at `start`.
+      return get_prediction_index(
+    /usr/local/lib/python3.10/dist-packages/statsmodels/tsa/base/tsa_model.py:836: FutureWarning: No supported index is available. In the next version, calling this method in a model without a supported index will result in an exception.
+      return get_prediction_index(
+
+    arima_rmse = np.sqrt(mean_squared_error(df[-len(arima_pred[:-n_future]):], arima_pred[:-n_future]))
+    print(f'ARIMA RMSE: {arima_rmse}')
+
+    ARIMA RMSE: 64.73877313827607
+
+    # RNN Predictions vs. Actual Values
+    plt.figure(figsize=(12,6))
+
+    # Plot the actual data
+    plt.plot(df.index, df['Close'], label='Actual', color='blue')
+
+    # Plot the training predictions
+    plt.plot(df.index[time_step:time_step + len(train_predict)], train_predict, color='green', label='Train Predictions')
+
+    # Plot the testing predictions
+    plt.plot(df.index[-len(test_predict):], test_predict, color='red', label='Test Predictions')
+
+    # Plot the future predictions
+    future_dates = pd.date_range(df.index[-1], periods=n_future, freq='D')
+    plt.plot(future_dates, future_predictions, color='orange', label='RNN Future Predictions')
+
+    plt.legend()
+    plt.title('RNN Predictions vs. Actual')
+    plt.xlabel('Time')
+    plt.ylabel('Stock Price')
+    plt.show()
+
+[]
+
+    plt.figure(figsize=(12,6))
+    plt.plot(df.index, df['Close'], label='Actual')
+    plt.plot(df.index[-len(arima_pred[:-n_future]):], arima_pred[:-n_future], color='green', label='ARIMA Prediction')
+    plt.plot(future_dates, arima_pred[-n_future:], color='purple', label='ARIMA Future Predictions')
+    plt.legend()
+    plt.title('ARIMA Predictions vs. Actual')
+    plt.xlabel('Time')
+    plt.ylabel('Stock Price')
+    plt.show()
+
+[]

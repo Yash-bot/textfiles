@@ -1,0 +1,386 @@
+
+
+    import yfinance as yf
+    import numpy as np
+    import pandas as pd
+    import matplotlib.pyplot as plt
+    from sklearn.preprocessing import MinMaxScaler
+    from tensorflow.keras.models import Sequential
+    from tensorflow.keras.layers import LSTM, Dense, Dropout, GRU
+
+    stock_symbol= 'AAPL'
+    df= yf.download(stock_symbol,start='2020-01-01', end='2023-01-01')
+
+    [*********************100%%**********************]  1 of 1 completed
+
+    data=df[['Close']].values
+
+    # Normalize the data
+    scaler = MinMaxScaler(feature_range=(0, 1))
+    data_scaled = scaler.fit_transform(data)
+
+
+    # Split data into train and test sets
+    train_size = int(len(data_scaled) * 0.8)
+    train, test = data_scaled[0:train_size], data_scaled[train_size:]
+
+    # Convert the data into time series format
+    def create_dataset(dataset, look_back=120):  # Larger look-back window
+        X, y = [], []
+        for i in range(len(dataset) - look_back):
+            X.append(dataset[i:i + look_back, 0])
+            y.append(dataset[i + look_back, 0])
+        return np.array(X), np.array(y)
+
+    look_back = 120  # Increased window size
+    X_train, y_train = create_dataset(train, look_back)
+    X_test, y_test = create_dataset(test, look_back)
+
+    # Reshape input to be [samples, time steps, features]
+    X_train = np.reshape(X_train, (X_train.shape[0], X_train.shape[1], 1))
+    X_test = np.reshape(X_test, (X_test.shape[0], X_test.shape[1], 1))
+
+    # Build LSTM model with Dropout layers to prevent overfitting
+    model_lstm = Sequential()
+    model_lstm.add(LSTM(100, input_shape=(look_back, 1), return_sequences=True))
+    model_lstm.add(Dropout(0.2))
+    model_lstm.add(LSTM(100))
+    model_lstm.add(Dropout(0.2))
+    model_lstm.add(Dense(1))
+    model_lstm.compile(loss='mean_squared_error', optimizer='adam')
+
+    /usr/local/lib/python3.10/dist-packages/keras/src/layers/rnn/rnn.py:204: UserWarning: Do not pass an `input_shape`/`input_dim` argument to a layer. When using Sequential models, prefer using an `Input(shape)` object as the first layer in the model instead.
+      super().__init__(**kwargs)
+
+    # Build GRU model with Dropout layers to prevent overfitting
+    model_gru = Sequential()
+    model_gru.add(GRU(100, input_shape=(look_back, 1), return_sequences=True))
+    model_gru.add(Dropout(0.2))
+    model_gru.add(GRU(100))
+    model_gru.add(Dropout(0.2))
+    model_gru.add(Dense(1))
+    model_gru.compile(loss='mean_squared_error', optimizer='adam')
+
+    # Train both models with more epochs and smaller batch size
+    model_lstm.fit(X_train, y_train, epochs=50, batch_size=16, verbose=1)
+    model_gru.fit(X_train, y_train, epochs=50, batch_size=16, verbose=1)
+
+    Epoch 1/50
+    31/31 ━━━━━━━━━━━━━━━━━━━━ 5s 74ms/step - loss: 0.1424
+    Epoch 2/50
+    31/31 ━━━━━━━━━━━━━━━━━━━━ 3s 82ms/step - loss: 0.0059
+    Epoch 3/50
+    31/31 ━━━━━━━━━━━━━━━━━━━━ 5s 74ms/step - loss: 0.0063
+    Epoch 4/50
+    31/31 ━━━━━━━━━━━━━━━━━━━━ 3s 73ms/step - loss: 0.0049
+    Epoch 5/50
+    31/31 ━━━━━━━━━━━━━━━━━━━━ 3s 72ms/step - loss: 0.0043
+    Epoch 6/50
+    31/31 ━━━━━━━━━━━━━━━━━━━━ 3s 104ms/step - loss: 0.0041
+    Epoch 7/50
+    31/31 ━━━━━━━━━━━━━━━━━━━━ 4s 74ms/step - loss: 0.0040
+    Epoch 8/50
+    31/31 ━━━━━━━━━━━━━━━━━━━━ 3s 75ms/step - loss: 0.0041
+    Epoch 9/50
+    31/31 ━━━━━━━━━━━━━━━━━━━━ 3s 74ms/step - loss: 0.0042
+    Epoch 10/50
+    31/31 ━━━━━━━━━━━━━━━━━━━━ 3s 105ms/step - loss: 0.0043
+    Epoch 11/50
+    31/31 ━━━━━━━━━━━━━━━━━━━━ 4s 75ms/step - loss: 0.0035
+    Epoch 12/50
+    31/31 ━━━━━━━━━━━━━━━━━━━━ 2s 74ms/step - loss: 0.0036
+    Epoch 13/50
+    31/31 ━━━━━━━━━━━━━━━━━━━━ 3s 75ms/step - loss: 0.0038
+    Epoch 14/50
+    31/31 ━━━━━━━━━━━━━━━━━━━━ 3s 103ms/step - loss: 0.0036
+    Epoch 15/50
+    31/31 ━━━━━━━━━━━━━━━━━━━━ 4s 74ms/step - loss: 0.0042
+    Epoch 16/50
+    31/31 ━━━━━━━━━━━━━━━━━━━━ 3s 73ms/step - loss: 0.0036
+    Epoch 17/50
+    31/31 ━━━━━━━━━━━━━━━━━━━━ 2s 74ms/step - loss: 0.0036
+    Epoch 18/50
+    31/31 ━━━━━━━━━━━━━━━━━━━━ 3s 103ms/step - loss: 0.0036
+    Epoch 19/50
+    31/31 ━━━━━━━━━━━━━━━━━━━━ 2s 73ms/step - loss: 0.0040
+    Epoch 20/50
+    31/31 ━━━━━━━━━━━━━━━━━━━━ 2s 74ms/step - loss: 0.0033
+    Epoch 21/50
+    31/31 ━━━━━━━━━━━━━━━━━━━━ 3s 73ms/step - loss: 0.0037
+    Epoch 22/50
+    31/31 ━━━━━━━━━━━━━━━━━━━━ 3s 73ms/step - loss: 0.0029
+    Epoch 23/50
+    31/31 ━━━━━━━━━━━━━━━━━━━━ 3s 99ms/step - loss: 0.0037
+    Epoch 24/50
+    31/31 ━━━━━━━━━━━━━━━━━━━━ 2s 75ms/step - loss: 0.0032
+    Epoch 25/50
+    31/31 ━━━━━━━━━━━━━━━━━━━━ 3s 74ms/step - loss: 0.0036
+    Epoch 26/50
+    31/31 ━━━━━━━━━━━━━━━━━━━━ 2s 76ms/step - loss: 0.0035
+    Epoch 27/50
+    31/31 ━━━━━━━━━━━━━━━━━━━━ 3s 84ms/step - loss: 0.0030
+    Epoch 28/50
+    31/31 ━━━━━━━━━━━━━━━━━━━━ 3s 93ms/step - loss: 0.0029
+    Epoch 29/50
+    31/31 ━━━━━━━━━━━━━━━━━━━━ 4s 74ms/step - loss: 0.0030
+    Epoch 30/50
+    31/31 ━━━━━━━━━━━━━━━━━━━━ 2s 74ms/step - loss: 0.0038
+    Epoch 31/50
+    31/31 ━━━━━━━━━━━━━━━━━━━━ 3s 93ms/step - loss: 0.0030
+    Epoch 32/50
+    31/31 ━━━━━━━━━━━━━━━━━━━━ 5s 76ms/step - loss: 0.0030
+    Epoch 33/50
+    31/31 ━━━━━━━━━━━━━━━━━━━━ 3s 76ms/step - loss: 0.0031
+    Epoch 34/50
+    31/31 ━━━━━━━━━━━━━━━━━━━━ 2s 76ms/step - loss: 0.0032
+    Epoch 35/50
+    31/31 ━━━━━━━━━━━━━━━━━━━━ 3s 105ms/step - loss: 0.0024
+    Epoch 36/50
+    31/31 ━━━━━━━━━━━━━━━━━━━━ 4s 73ms/step - loss: 0.0024
+    Epoch 37/50
+    31/31 ━━━━━━━━━━━━━━━━━━━━ 2s 74ms/step - loss: 0.0027
+    Epoch 38/50
+    31/31 ━━━━━━━━━━━━━━━━━━━━ 3s 76ms/step - loss: 0.0041
+    Epoch 39/50
+    31/31 ━━━━━━━━━━━━━━━━━━━━ 3s 104ms/step - loss: 0.0028
+    Epoch 40/50
+    31/31 ━━━━━━━━━━━━━━━━━━━━ 4s 76ms/step - loss: 0.0030
+    Epoch 41/50
+    31/31 ━━━━━━━━━━━━━━━━━━━━ 2s 77ms/step - loss: 0.0025
+    Epoch 42/50
+    31/31 ━━━━━━━━━━━━━━━━━━━━ 2s 75ms/step - loss: 0.0024
+    Epoch 43/50
+    31/31 ━━━━━━━━━━━━━━━━━━━━ 3s 101ms/step - loss: 0.0026
+    Epoch 44/50
+    31/31 ━━━━━━━━━━━━━━━━━━━━ 2s 76ms/step - loss: 0.0026
+    Epoch 45/50
+    31/31 ━━━━━━━━━━━━━━━━━━━━ 2s 74ms/step - loss: 0.0028
+    Epoch 46/50
+    31/31 ━━━━━━━━━━━━━━━━━━━━ 3s 75ms/step - loss: 0.0026
+    Epoch 47/50
+    31/31 ━━━━━━━━━━━━━━━━━━━━ 2s 78ms/step - loss: 0.0021
+    Epoch 48/50
+    31/31 ━━━━━━━━━━━━━━━━━━━━ 3s 96ms/step - loss: 0.0023
+    Epoch 49/50
+    31/31 ━━━━━━━━━━━━━━━━━━━━ 4s 76ms/step - loss: 0.0026
+    Epoch 50/50
+    31/31 ━━━━━━━━━━━━━━━━━━━━ 2s 73ms/step - loss: 0.0025
+    Epoch 1/50
+    31/31 ━━━━━━━━━━━━━━━━━━━━ 6s 110ms/step - loss: 0.1332
+    Epoch 2/50
+    31/31 ━━━━━━━━━━━━━━━━━━━━ 5s 92ms/step - loss: 0.0061
+    Epoch 3/50
+    31/31 ━━━━━━━━━━━━━━━━━━━━ 6s 113ms/step - loss: 0.0033
+    Epoch 4/50
+    31/31 ━━━━━━━━━━━━━━━━━━━━ 3s 93ms/step - loss: 0.0040
+    Epoch 5/50
+    31/31 ━━━━━━━━━━━━━━━━━━━━ 5s 93ms/step - loss: 0.0041
+    Epoch 6/50
+    31/31 ━━━━━━━━━━━━━━━━━━━━ 3s 101ms/step - loss: 0.0034
+    Epoch 7/50
+    31/31 ━━━━━━━━━━━━━━━━━━━━ 3s 107ms/step - loss: 0.0034
+    Epoch 8/50
+    31/31 ━━━━━━━━━━━━━━━━━━━━ 5s 93ms/step - loss: 0.0040
+    Epoch 9/50
+    31/31 ━━━━━━━━━━━━━━━━━━━━ 3s 93ms/step - loss: 0.0031
+    Epoch 10/50
+    31/31 ━━━━━━━━━━━━━━━━━━━━ 4s 115ms/step - loss: 0.0029
+    Epoch 11/50
+    31/31 ━━━━━━━━━━━━━━━━━━━━ 3s 93ms/step - loss: 0.0031
+    Epoch 12/50
+    31/31 ━━━━━━━━━━━━━━━━━━━━ 5s 92ms/step - loss: 0.0031
+    Epoch 13/50
+    31/31 ━━━━━━━━━━━━━━━━━━━━ 5s 94ms/step - loss: 0.0024
+    Epoch 14/50
+    31/31 ━━━━━━━━━━━━━━━━━━━━ 5s 92ms/step - loss: 0.0031
+    Epoch 15/50
+    31/31 ━━━━━━━━━━━━━━━━━━━━ 6s 108ms/step - loss: 0.0033
+    Epoch 16/50
+    31/31 ━━━━━━━━━━━━━━━━━━━━ 5s 93ms/step - loss: 0.0025
+    Epoch 17/50
+    31/31 ━━━━━━━━━━━━━━━━━━━━ 3s 92ms/step - loss: 0.0024
+    Epoch 18/50
+    31/31 ━━━━━━━━━━━━━━━━━━━━ 4s 114ms/step - loss: 0.0030
+    Epoch 19/50
+    31/31 ━━━━━━━━━━━━━━━━━━━━ 3s 94ms/step - loss: 0.0026
+    Epoch 20/50
+    31/31 ━━━━━━━━━━━━━━━━━━━━ 3s 95ms/step - loss: 0.0026
+    Epoch 21/50
+    31/31 ━━━━━━━━━━━━━━━━━━━━ 3s 94ms/step - loss: 0.0027
+    Epoch 22/50
+    31/31 ━━━━━━━━━━━━━━━━━━━━ 4s 120ms/step - loss: 0.0023
+    Epoch 23/50
+    31/31 ━━━━━━━━━━━━━━━━━━━━ 3s 93ms/step - loss: 0.0024
+    Epoch 24/50
+    31/31 ━━━━━━━━━━━━━━━━━━━━ 3s 94ms/step - loss: 0.0021
+    Epoch 25/50
+    31/31 ━━━━━━━━━━━━━━━━━━━━ 6s 116ms/step - loss: 0.0027
+    Epoch 26/50
+    31/31 ━━━━━━━━━━━━━━━━━━━━ 4s 92ms/step - loss: 0.0025
+    Epoch 27/50
+    31/31 ━━━━━━━━━━━━━━━━━━━━ 3s 92ms/step - loss: 0.0025
+    Epoch 28/50
+    31/31 ━━━━━━━━━━━━━━━━━━━━ 3s 105ms/step - loss: 0.0031
+    Epoch 29/50
+    31/31 ━━━━━━━━━━━━━━━━━━━━ 3s 105ms/step - loss: 0.0024
+    Epoch 30/50
+    31/31 ━━━━━━━━━━━━━━━━━━━━ 5s 93ms/step - loss: 0.0025
+    Epoch 31/50
+    31/31 ━━━━━━━━━━━━━━━━━━━━ 3s 94ms/step - loss: 0.0021
+    Epoch 32/50
+    31/31 ━━━━━━━━━━━━━━━━━━━━ 4s 116ms/step - loss: 0.0027
+    Epoch 33/50
+    31/31 ━━━━━━━━━━━━━━━━━━━━ 3s 93ms/step - loss: 0.0026
+    Epoch 34/50
+    31/31 ━━━━━━━━━━━━━━━━━━━━ 3s 92ms/step - loss: 0.0020
+    Epoch 35/50
+    31/31 ━━━━━━━━━━━━━━━━━━━━ 3s 94ms/step - loss: 0.0020
+    Epoch 36/50
+    31/31 ━━━━━━━━━━━━━━━━━━━━ 5s 94ms/step - loss: 0.0022
+    Epoch 37/50
+    31/31 ━━━━━━━━━━━━━━━━━━━━ 3s 93ms/step - loss: 0.0022
+    Epoch 38/50
+    31/31 ━━━━━━━━━━━━━━━━━━━━ 3s 93ms/step - loss: 0.0021
+    Epoch 39/50
+    31/31 ━━━━━━━━━━━━━━━━━━━━ 5s 90ms/step - loss: 0.0026
+    Epoch 40/50
+    31/31 ━━━━━━━━━━━━━━━━━━━━ 5s 92ms/step - loss: 0.0024
+    Epoch 41/50
+    31/31 ━━━━━━━━━━━━━━━━━━━━ 4s 117ms/step - loss: 0.0023
+    Epoch 42/50
+    31/31 ━━━━━━━━━━━━━━━━━━━━ 4s 93ms/step - loss: 0.0017
+    Epoch 43/50
+    31/31 ━━━━━━━━━━━━━━━━━━━━ 5s 93ms/step - loss: 0.0018
+    Epoch 44/50
+    31/31 ━━━━━━━━━━━━━━━━━━━━ 4s 117ms/step - loss: 0.0025
+    Epoch 45/50
+    31/31 ━━━━━━━━━━━━━━━━━━━━ 3s 92ms/step - loss: 0.0019
+    Epoch 46/50
+    31/31 ━━━━━━━━━━━━━━━━━━━━ 5s 93ms/step - loss: 0.0023
+    Epoch 47/50
+    31/31 ━━━━━━━━━━━━━━━━━━━━ 4s 115ms/step - loss: 0.0024
+    Epoch 48/50
+    31/31 ━━━━━━━━━━━━━━━━━━━━ 3s 92ms/step - loss: 0.0023
+    Epoch 49/50
+    31/31 ━━━━━━━━━━━━━━━━━━━━ 3s 92ms/step - loss: 0.0021
+    Epoch 50/50
+    31/31 ━━━━━━━━━━━━━━━━━━━━ 3s 93ms/step - loss: 0.0019
+
+    <keras.src.callbacks.history.History at 0x7febbcade680>
+
+    # Make predictions
+    lstm_predictions = model_lstm.predict(X_test)
+    gru_predictions = model_gru.predict(X_test)
+
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 208ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 262ms/step
+
+    # Inverse transform predictions and actual values
+    lstm_predictions = scaler.inverse_transform(lstm_predictions)
+    gru_predictions = scaler.inverse_transform(gru_predictions)
+    y_test_actual = scaler.inverse_transform([y_test])
+
+    # Future predictions (next 30 days)
+    future_steps = 30
+    last_sequence = X_test[-1]  # Last sequence in the test data
+
+    # Predict future prices using the LSTM model
+    lstm_future_predictions = []
+    for _ in range(future_steps):
+        prediction = model_lstm.predict(np.reshape(last_sequence, (1, look_back, 1)))
+        lstm_future_predictions.append(prediction[0][0])
+        last_sequence = np.append(last_sequence[1:], prediction[0])
+
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 216ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 33ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 35ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 38ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 33ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 33ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 35ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 32ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 30ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 35ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 35ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 49ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 37ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 36ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 33ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 33ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 33ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 34ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 32ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 33ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 35ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 33ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 34ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 31ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 37ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 43ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 41ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 39ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 33ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 36ms/step
+
+    # Predict future prices using the GRU model
+    last_sequence = X_test[-1]  # Reset sequence
+    gru_future_predictions = []
+    for _ in range(future_steps):
+        prediction = model_gru.predict(np.reshape(last_sequence, (1, look_back, 1)))
+        gru_future_predictions.append(prediction[0][0])
+        last_sequence = np.append(last_sequence[1:], prediction[0])
+
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 244ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 32ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 33ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 33ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 33ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 32ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 33ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 31ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 31ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 41ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 35ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 45ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 33ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 31ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 37ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 35ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 36ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 38ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 34ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 34ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 34ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 34ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 32ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 43ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 35ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 39ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 34ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 34ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 35ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 37ms/step
+
+    # Inverse transform future predictions
+    lstm_future_predictions = scaler.inverse_transform(np.array(lstm_future_predictions).reshape(-1, 1))
+    gru_future_predictions = scaler.inverse_transform(np.array(gru_future_predictions).reshape(-1, 1))
+
+    # Create a new time range for future predictions
+    future_range = np.arange(len(y_test_actual[0]), len(y_test_actual[0]) + future_steps)
+
+    # Plot the actual values, model predictions, and future predictions
+    plt.figure(figsize=(14, 7))
+    plt.plot(y_test_actual[0], label='Actual Stock Price', color='blue')
+    plt.plot(lstm_predictions, label='LSTM Predictions', color='orange')
+    plt.plot(gru_predictions, label='GRU Predictions', color='green')
+    # Plot the future predictions
+    plt.plot(future_range, lstm_future_predictions, label='LSTM Future Predictions', color='red', linestyle='dashed')
+    plt.plot(future_range, gru_future_predictions, label='GRU Future Predictions', color='purple', linestyle='dashed')
+
+    plt.title(f'{stock_symbol} Stock Price Prediction and Future Forecasting - LSTM vs GRU')
+    plt.xlabel('Time Steps')
+    plt.ylabel('Stock Price')
+    plt.legend()
+    plt.show()
+
+[]
