@@ -1,0 +1,297 @@
+
+
+    import numpy as np
+    import pandas as pd
+    import matplotlib.pyplot as plt
+    from sklearn.preprocessing import MinMaxScaler
+    from sklearn.metrics import mean_squared_error
+    from tensorflow.keras.models import Sequential
+    from tensorflow.keras.layers import Dense, LSTM, Dropout
+    from tensorflow.keras.callbacks import EarlyStopping
+    import yfinance as yf
+
+    stock_data = yf.download('AAPL', start='2012-01-01', end='2022-01-01')
+    df = stock_data[['Close']]
+
+    [*********************100%%**********************]  1 of 1 completed
+
+    df['Close'] = df['Close'].rolling(window=5).mean()
+    df.dropna(inplace=True)
+
+    scaler = MinMaxScaler(feature_range=(0, 1))
+    scaled_data = scaler.fit_transform(df)
+
+    def create_dataset(data, time_step=1):
+        X, Y = [], []
+        for i in range(len(data)-time_step-1):
+            X.append(data[i:(i+time_step), 0])
+            Y.append(data[i + time_step, 0])
+        return np.array(X), np.array(Y)
+
+    time_step = 60
+
+    X, Y = create_dataset(scaled_data, time_step)
+
+    train_size = int(len(X) * 0.8)
+    X_train, X_test = X[:train_size], X[train_size:]
+    Y_train, Y_test = Y[:train_size], Y[train_size:]
+
+    X_train = X_train.reshape(X_train.shape[0], X_train.shape[1], 1)
+    X_test = X_test.reshape(X_test.shape[0], X_test.shape[1], 1)
+
+    model = Sequential()
+    model.add(LSTM(50, return_sequences=True, input_shape=(time_step, 1)))
+    model.add(Dropout(0.2))  # Adding dropout for regularization
+    model.add(LSTM(50, return_sequences=False))
+    model.add(Dropout(0.2))  # Adding another dropout layer
+    model.add(Dense(25))
+    model.add(Dense(1))
+    model.compile(optimizer='adam', loss='mean_squared_error')
+
+    /usr/local/lib/python3.10/dist-packages/keras/src/layers/rnn/rnn.py:204: UserWarning: Do not pass an `input_shape`/`input_dim` argument to a layer. When using Sequential models, prefer using an `Input(shape)` object as the first layer in the model instead.
+      super().__init__(**kwargs)
+
+    early_stop = EarlyStopping(monitor='val_loss', patience=10, restore_best_weights=True)
+
+    history = model.fit(X_train, Y_train, epochs=100, batch_size=32, validation_data=(X_test, Y_test), callbacks=[early_stop], verbose=1)
+
+    Epoch 1/100
+    62/62 ━━━━━━━━━━━━━━━━━━━━ 9s 75ms/step - loss: 0.0026 - val_loss: 0.0012
+    Epoch 2/100
+    62/62 ━━━━━━━━━━━━━━━━━━━━ 4s 66ms/step - loss: 2.0675e-04 - val_loss: 0.0011
+    Epoch 3/100
+    62/62 ━━━━━━━━━━━━━━━━━━━━ 6s 73ms/step - loss: 1.6089e-04 - val_loss: 8.6977e-04
+    Epoch 4/100
+    62/62 ━━━━━━━━━━━━━━━━━━━━ 5s 71ms/step - loss: 1.4644e-04 - val_loss: 0.0016
+    Epoch 5/100
+    62/62 ━━━━━━━━━━━━━━━━━━━━ 5s 64ms/step - loss: 1.2494e-04 - val_loss: 7.9815e-04
+    Epoch 6/100
+    62/62 ━━━━━━━━━━━━━━━━━━━━ 7s 97ms/step - loss: 1.1813e-04 - val_loss: 7.3604e-04
+    Epoch 7/100
+    62/62 ━━━━━━━━━━━━━━━━━━━━ 4s 56ms/step - loss: 1.1645e-04 - val_loss: 0.0014
+    Epoch 8/100
+    62/62 ━━━━━━━━━━━━━━━━━━━━ 4s 57ms/step - loss: 1.0159e-04 - val_loss: 9.0472e-04
+    Epoch 9/100
+    62/62 ━━━━━━━━━━━━━━━━━━━━ 6s 74ms/step - loss: 1.0100e-04 - val_loss: 0.0013
+    Epoch 10/100
+    62/62 ━━━━━━━━━━━━━━━━━━━━ 4s 55ms/step - loss: 9.8857e-05 - val_loss: 0.0012
+    Epoch 11/100
+    62/62 ━━━━━━━━━━━━━━━━━━━━ 3s 56ms/step - loss: 7.5930e-05 - val_loss: 0.0015
+    Epoch 12/100
+    62/62 ━━━━━━━━━━━━━━━━━━━━ 6s 92ms/step - loss: 9.0212e-05 - val_loss: 6.2125e-04
+    Epoch 13/100
+    62/62 ━━━━━━━━━━━━━━━━━━━━ 4s 65ms/step - loss: 9.9175e-05 - val_loss: 0.0013
+    Epoch 14/100
+    62/62 ━━━━━━━━━━━━━━━━━━━━ 4s 57ms/step - loss: 8.4189e-05 - val_loss: 7.8330e-04
+    Epoch 15/100
+    62/62 ━━━━━━━━━━━━━━━━━━━━ 7s 84ms/step - loss: 8.3153e-05 - val_loss: 6.1378e-04
+    Epoch 16/100
+    62/62 ━━━━━━━━━━━━━━━━━━━━ 8s 56ms/step - loss: 7.8355e-05 - val_loss: 5.6101e-04
+    Epoch 17/100
+    62/62 ━━━━━━━━━━━━━━━━━━━━ 5s 83ms/step - loss: 1.1170e-04 - val_loss: 5.4884e-04
+    Epoch 18/100
+    62/62 ━━━━━━━━━━━━━━━━━━━━ 10s 77ms/step - loss: 1.0509e-04 - val_loss: 0.0010
+    Epoch 19/100
+    62/62 ━━━━━━━━━━━━━━━━━━━━ 9s 151ms/step - loss: 8.3849e-05 - val_loss: 8.6212e-04
+    Epoch 20/100
+    62/62 ━━━━━━━━━━━━━━━━━━━━ 8s 134ms/step - loss: 8.2688e-05 - val_loss: 8.0771e-04
+    Epoch 21/100
+    62/62 ━━━━━━━━━━━━━━━━━━━━ 8s 100ms/step - loss: 9.8525e-05 - val_loss: 5.3506e-04
+    Epoch 22/100
+    62/62 ━━━━━━━━━━━━━━━━━━━━ 9s 79ms/step - loss: 9.3365e-05 - val_loss: 0.0019
+    Epoch 23/100
+    62/62 ━━━━━━━━━━━━━━━━━━━━ 3s 56ms/step - loss: 8.6071e-05 - val_loss: 5.3205e-04
+    Epoch 24/100
+    62/62 ━━━━━━━━━━━━━━━━━━━━ 5s 56ms/step - loss: 8.8387e-05 - val_loss: 5.1840e-04
+    Epoch 25/100
+    62/62 ━━━━━━━━━━━━━━━━━━━━ 5s 85ms/step - loss: 7.6333e-05 - val_loss: 5.0047e-04
+    Epoch 26/100
+    62/62 ━━━━━━━━━━━━━━━━━━━━ 4s 58ms/step - loss: 8.1358e-05 - val_loss: 4.8928e-04
+    Epoch 27/100
+    62/62 ━━━━━━━━━━━━━━━━━━━━ 5s 56ms/step - loss: 7.8391e-05 - val_loss: 9.0721e-04
+    Epoch 28/100
+    62/62 ━━━━━━━━━━━━━━━━━━━━ 5s 86ms/step - loss: 8.1704e-05 - val_loss: 5.1716e-04
+    Epoch 29/100
+    62/62 ━━━━━━━━━━━━━━━━━━━━ 8s 56ms/step - loss: 7.7476e-05 - val_loss: 7.9896e-04
+    Epoch 30/100
+    62/62 ━━━━━━━━━━━━━━━━━━━━ 6s 76ms/step - loss: 7.1678e-05 - val_loss: 5.2275e-04
+    Epoch 31/100
+    62/62 ━━━━━━━━━━━━━━━━━━━━ 4s 57ms/step - loss: 7.8792e-05 - val_loss: 9.7715e-04
+    Epoch 32/100
+    62/62 ━━━━━━━━━━━━━━━━━━━━ 3s 55ms/step - loss: 9.6463e-05 - val_loss: 4.5966e-04
+    Epoch 33/100
+    62/62 ━━━━━━━━━━━━━━━━━━━━ 6s 89ms/step - loss: 7.6337e-05 - val_loss: 5.2463e-04
+    Epoch 34/100
+    62/62 ━━━━━━━━━━━━━━━━━━━━ 4s 69ms/step - loss: 7.2296e-05 - val_loss: 7.4909e-04
+    Epoch 35/100
+    62/62 ━━━━━━━━━━━━━━━━━━━━ 4s 57ms/step - loss: 8.5973e-05 - val_loss: 5.1434e-04
+    Epoch 36/100
+    62/62 ━━━━━━━━━━━━━━━━━━━━ 6s 89ms/step - loss: 7.2620e-05 - val_loss: 0.0012
+    Epoch 37/100
+    62/62 ━━━━━━━━━━━━━━━━━━━━ 8s 57ms/step - loss: 7.5340e-05 - val_loss: 5.3324e-04
+    Epoch 38/100
+    62/62 ━━━━━━━━━━━━━━━━━━━━ 5s 83ms/step - loss: 7.5322e-05 - val_loss: 0.0012
+    Epoch 39/100
+    62/62 ━━━━━━━━━━━━━━━━━━━━ 5s 71ms/step - loss: 7.5761e-05 - val_loss: 0.0013
+    Epoch 40/100
+    62/62 ━━━━━━━━━━━━━━━━━━━━ 5s 75ms/step - loss: 8.0037e-05 - val_loss: 0.0013
+    Epoch 41/100
+    62/62 ━━━━━━━━━━━━━━━━━━━━ 7s 107ms/step - loss: 7.8974e-05 - val_loss: 0.0017
+    Epoch 42/100
+    62/62 ━━━━━━━━━━━━━━━━━━━━ 7s 57ms/step - loss: 6.9726e-05 - val_loss: 0.0024
+
+    train_predict = model.predict(X_train)
+    test_predict = model.predict(X_test)
+
+    62/62 ━━━━━━━━━━━━━━━━━━━━ 2s 20ms/step
+    16/16 ━━━━━━━━━━━━━━━━━━━━ 0s 15ms/step
+
+    train_predict = scaler.inverse_transform(train_predict)
+    test_predict = scaler.inverse_transform(test_predict)
+    Y_train = scaler.inverse_transform([Y_train])
+    Y_test = scaler.inverse_transform([Y_test])
+
+    train_rmse = np.sqrt(mean_squared_error(Y_train[0], train_predict[:,0]))
+    test_rmse = np.sqrt(mean_squared_error(Y_test[0], test_predict[:,0]))
+    print(f'Train RMSE: {train_rmse}')
+    print(f'Test RMSE: {test_rmse}')
+
+    Train RMSE: 0.9219268130951087
+    Test RMSE: 3.5671807383225227
+
+    n_future = 100  # Predicting 30 days into the future
+    last_sequence = scaled_data[-time_step:]
+    predictions = []
+
+    for _ in range(n_future):
+        next_prediction = model.predict(last_sequence.reshape(1, time_step, 1))
+        predictions.append(next_prediction[0, 0])
+        last_sequence = np.append(last_sequence[1:], next_prediction, axis=0)
+
+    predictions = np.array(predictions)
+    future_predictions = scaler.inverse_transform(predictions.reshape(-1, 1))
+
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 67ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 40ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 46ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 69ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 43ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 39ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 49ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 25ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 23ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 28ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 25ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 31ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 48ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 25ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 26ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 23ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 24ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 24ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 25ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 27ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 32ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 26ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 28ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 24ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 36ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 25ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 24ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 24ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 26ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 25ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 30ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 25ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 25ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 25ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 25ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 32ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 26ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 25ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 24ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 24ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 28ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 25ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 25ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 31ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 24ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 25ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 29ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 31ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 25ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 28ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 24ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 25ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 25ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 25ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 27ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 28ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 24ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 24ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 33ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 27ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 24ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 26ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 30ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 23ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 26ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 26ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 25ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 33ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 26ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 28ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 34ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 24ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 28ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 24ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 26ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 26ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 26ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 25ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 26ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 26ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 29ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 32ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 25ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 26ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 28ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 25ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 24ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 24ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 26ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 29ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 31ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 25ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 32ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 24ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 26ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 24ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 24ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 28ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 24ms/step
+    1/1 ━━━━━━━━━━━━━━━━━━━━ 0s 29ms/step
+
+    # LSTM Predictions vs. Actual Values
+    plt.figure(figsize=(12,6))
+
+    # Plot the actual data
+    plt.plot(df.index, df['Close'], label='Actual', color='blue')
+
+    # Plot the training predictions
+    plt.plot(df.index[time_step:time_step + len(train_predict)], train_predict, color='green', label='Train Predictions')
+
+    # Plot the testing predictions
+    plt.plot(df.index[-len(test_predict):], test_predict, color='red', label='Test Predictions')
+
+    # Plot the future predictions
+    future_dates = pd.date_range(df.index[-1], periods=n_future, freq='D')
+    plt.plot(future_dates, future_predictions, color='orange', label='LSTM Future Predictions')
+
+    plt.legend()
+    plt.title('LSTM Predictions vs. Actual')
+    plt.xlabel('Time')
+    plt.ylabel('Stock Price')
+    plt.show()
+
+[]
